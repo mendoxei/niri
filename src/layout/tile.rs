@@ -96,6 +96,10 @@ pub struct Tile<W: LayoutElement> {
     /// The animation of the tile's opacity.
     pub(super) alpha_animation: Option<AlphaAnimation>,
 
+    /// The opacity the window rules asked for last time, and the animation towards it.
+    rule_opacity_target: f32,
+    rule_opacity_animation: Option<Animation>,
+
     /// Offset during the initial interactive move rubberband.
     pub(super) interactive_move_offset: Point<f64, Logical>,
 
@@ -187,6 +191,7 @@ impl<W: LayoutElement> Tile<W> {
         let focus_ring_config = options.layout.focus_ring.merged_with(&rules.focus_ring);
         let shadow_config = options.layout.shadow.merged_with(&rules.shadow);
         let sizing_mode = window.sizing_mode();
+        let rule_opacity_target = rules.opacity.unwrap_or(1.).clamp(0., 1.);
 
         Self {
             window,
@@ -205,6 +210,8 @@ impl<W: LayoutElement> Tile<W> {
             move_x_animation: None,
             move_y_animation: None,
             alpha_animation: None,
+            rule_opacity_target,
+            rule_opacity_animation: None,
             interactive_move_offset: Point::from((0., 0.)),
             unmap_snapshot: None,
             rounded_corner_damage: Default::default(),
@@ -387,6 +394,19 @@ impl<W: LayoutElement> Tile<W> {
         let round_max1 = |logical| round_logical_in_physical_max1(self.scale, logical);
 
         let rules = self.window.rules();
+        let opacity_target = rules.opacity.unwrap_or(1.).clamp(0., 1.);
+        if opacity_target != self.rule_opacity_target {
+            let from = self.rule_opacity();
+            self.rule_opacity_target = opacity_target;
+            self.rule_opacity_animation = Some(Animation::new(
+                self.clock.clone(),
+                f64::from(from),
+                f64::from(opacity_target),
+                0.,
+                self.options.animations.window_movement.0,
+            ));
+        }
+
         let mut border_config = self.options.layout.border.merged_with(&rules.border);
         border_config.width = round_max1(border_config.width);
         self.border.update_config(border_config.into());
@@ -439,6 +459,21 @@ impl<W: LayoutElement> Tile<W> {
                 self.alpha_animation = None;
             }
         }
+
+        if self
+            .rule_opacity_animation
+            .as_ref()
+            .is_some_and(|anim| anim.is_done())
+        {
+            self.rule_opacity_animation = None;
+        }
+    }
+
+    /// The opacity from the window rules, eased towards its latest value.
+    fn rule_opacity(&self) -> f32 {
+        self.rule_opacity_animation
+            .as_ref()
+            .map_or(self.rule_opacity_target, |anim| anim.clamped_value() as f32)
     }
 
     pub fn are_animations_ongoing(&self) -> bool {
@@ -450,6 +485,7 @@ impl<W: LayoutElement> Tile<W> {
             || self.resize_animation.is_some()
             || self.move_x_animation.is_some()
             || self.move_y_animation.is_some()
+            || self.rule_opacity_animation.is_some()
             || self
                 .alpha_animation
                 .as_ref()
@@ -1038,7 +1074,7 @@ impl<W: LayoutElement> Tile<W> {
         let win_alpha = if self.window.is_ignoring_opacity_window_rule() {
             1.
         } else {
-            let alpha = self.window.rules().opacity.unwrap_or(1.).clamp(0., 1.);
+            let alpha = self.rule_opacity();
 
             // Interpolate towards alpha = 1. at fullscreen.
             let p = fullscreen_progress as f32;
