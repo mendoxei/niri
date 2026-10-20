@@ -44,6 +44,8 @@ struct Parameters {
     // Should only be used for visual improvements, i.e. corner radius anti-aliasing.
     scale: f32,
     alpha: f32,
+    /// Rotation of the conic gradient in turns, or `None` for a linear gradient.
+    spin_phase: Option<f32>,
 }
 
 impl BorderRenderElement {
@@ -76,6 +78,7 @@ impl BorderRenderElement {
                 corner_radius,
                 scale,
                 alpha,
+                spin_phase: None,
             },
         };
         rv.update_inner();
@@ -98,6 +101,7 @@ impl BorderRenderElement {
                 corner_radius: Default::default(),
                 scale: 1.,
                 alpha: 1.,
+                spin_phase: None,
             },
         }
     }
@@ -133,12 +137,22 @@ impl BorderRenderElement {
             corner_radius,
             scale,
             alpha,
+            spin_phase: self.params.spin_phase,
         };
         if self.params == params {
             return;
         }
 
         self.params = params;
+        self.update_inner();
+    }
+
+    pub fn set_spin_phase(&mut self, spin_phase: Option<f32>) {
+        if self.params.spin_phase == spin_phase {
+            return;
+        }
+
+        self.params.spin_phase = spin_phase;
         self.update_inner();
     }
 
@@ -155,6 +169,7 @@ impl BorderRenderElement {
             corner_radius,
             scale,
             alpha,
+            spin_phase,
         } = self.params;
 
         let grad_offset = geometry.loc - gradient_area.loc;
@@ -213,6 +228,8 @@ impl BorderRenderElement {
                 Uniform::new("geo_size", geo_size.to_array()),
                 Uniform::new("outer_radius", <[f32; 4]>::from(corner_radius)),
                 Uniform::new("border_width", border_width),
+                Uniform::new("spin_enabled", if spin_phase.is_some() { 1. } else { 0. }),
+                Uniform::new("spin_phase", spin_phase.unwrap_or(0.)),
             ]),
             HashMap::new(),
         );

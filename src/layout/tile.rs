@@ -477,7 +477,10 @@ impl<W: LayoutElement> Tile<W> {
     }
 
     pub fn are_animations_ongoing(&self) -> bool {
-        self.are_transitions_ongoing() || self.window.rules().baba_is_float == Some(true)
+        self.are_transitions_ongoing()
+            || self.window.rules().baba_is_float == Some(true)
+            || self.border.is_spinning()
+            || self.focus_ring.is_spinning()
     }
 
     pub fn are_transitions_ongoing(&self) -> bool {
@@ -496,6 +499,7 @@ impl<W: LayoutElement> Tile<W> {
         let rules = self.window.rules();
         let animated_tile_size = self.animated_tile_size();
         let expanded_progress = self.expanded_progress();
+        let now = self.clock.now();
 
         let draw_border_with_background = rules
             .draw_border_with_background
@@ -538,6 +542,7 @@ impl<W: LayoutElement> Tile<W> {
             radius,
             self.scale,
             1. - expanded_progress as f32,
+            now,
         );
 
         let radius = if self.visual_border_width().is_some() {
@@ -570,6 +575,7 @@ impl<W: LayoutElement> Tile<W> {
             radius,
             self.scale,
             1. - expanded_progress as f32,
+            now,
         );
 
         self.fullscreen_backdrop.resize(animated_tile_size);

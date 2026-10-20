@@ -95,6 +95,10 @@ pub struct Gradient {
     pub relative_to: GradientRelativeTo,
     #[knuffel(property(name = "in"), str, default)]
     pub in_: GradientInterpolation,
+    /// Period in milliseconds of a conic gradient that wraps around the window and rotates. The
+    /// gradient runs from `from` to `to` and back, so the colors loop without a seam.
+    #[knuffel(property)]
+    pub spin: Option<u32>,
 }
 
 impl From<Color> for Gradient {
@@ -105,6 +109,7 @@ impl From<Color> for Gradient {
             angle: 0,
             relative_to: GradientRelativeTo::Window,
             in_: GradientInterpolation::default(),
+            spin: None,
         }
     }
 }

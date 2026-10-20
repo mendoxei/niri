@@ -54,6 +54,8 @@ impl Shaders {
                 UniformName::new("geo_size", UniformType::_2f),
                 UniformName::new("outer_radius", UniformType::_4f),
                 UniformName::new("border_width", UniformType::_1f),
+                UniformName::new("spin_enabled", UniformType::_1f),
+                UniformName::new("spin_phase", UniformType::_1f),
             ],
             &[],
         )

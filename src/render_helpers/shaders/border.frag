@@ -22,6 +22,8 @@ uniform mat3 input_to_geo;
 uniform vec2 geo_size;
 uniform vec4 outer_radius;
 uniform float border_width;
+uniform float spin_enabled;
+uniform float spin_phase;
 
 vec4 premul_rect(vec4 color) {
     color.rgb *= color.a;
@@ -210,9 +212,18 @@ vec4 gradient_color(vec2 coords) {
 
 float niri_rounding_alpha(vec2 coords, vec2 size, vec4 corner_radius);
 
+// Conic gradient around the center of the geometry, from color_from to color_to and back so the
+// ends meet, rotated by spin_phase turns.
+vec4 spin_color(vec2 coords) {
+    vec2 d = coords - geo_size * 0.5;
+    float turns = atan(d.y, d.x) / 6.28318530718 + 0.5 + spin_phase;
+    float frac = abs(fract(turns) * 2.0 - 1.0);
+    return color_mix(color_from, color_to, frac);
+}
+
 void main() {
     vec3 coords_geo = input_to_geo * vec3(niri_v_coords, 1.0);
-    vec4 color = gradient_color(coords_geo.xy);
+    vec4 color = spin_enabled == 1.0 ? spin_color(coords_geo.xy) : gradient_color(coords_geo.xy);
     color = color * niri_rounding_alpha(coords_geo.xy, geo_size, outer_radius);
 
     if (border_width > 0.0) {

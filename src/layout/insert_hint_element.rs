@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use niri_config::CornerRadius;
 use smithay::utils::{Logical, Point, Rectangle, Size};
 
@@ -52,7 +54,7 @@ impl InsertHintElement {
         scale: f64,
     ) {
         self.inner
-            .update_render_elements(size, true, false, false, view_rect, radius, scale, 1.);
+            .update_render_elements(size, true, false, false, view_rect, radius, scale, 1., Duration::ZERO);
     }
 
     pub fn render(

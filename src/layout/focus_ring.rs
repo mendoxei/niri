@@ -1,4 +1,5 @@
 use std::iter::zip;
+use std::time::Duration;
 
 use niri_config::{CornerRadius, Gradient, GradientRelativeTo};
 use smithay::backend::renderer::element::{Element as _, Kind};
@@ -18,6 +19,7 @@ pub struct FocusRing {
     full_size: Size<f64, Logical>,
     is_border: bool,
     use_border_shader: bool,
+    spinning: bool,
     config: niri_config::FocusRing,
     thicken_corners: bool,
 }
@@ -39,6 +41,7 @@ impl FocusRing {
             full_size: Default::default(),
             is_border: false,
             use_border_shader: false,
+            spinning: false,
             config,
             thicken_corners: true,
         }
@@ -65,6 +68,7 @@ impl FocusRing {
         radius: CornerRadius,
         scale: f64,
         alpha: f32,
+        now: Duration,
     ) {
         let width = self.config.width;
         self.full_size = win_size + Size::from((width, width)).upscale(2.);
@@ -93,6 +97,11 @@ impl FocusRing {
         };
 
         self.use_border_shader = radius != CornerRadius::default() || gradient.is_some();
+        self.spinning = gradient.is_some_and(|gradient| gradient.spin.is_some());
+        let spin_phase = gradient.and_then(|gradient| gradient.spin).map(|period| {
+            let period = u128::from(period.max(1));
+            (now.as_millis() % period) as f32 / period as f32
+        });
 
         // Set the defaults for solid color + rounded corners.
         let gradient = gradient.unwrap_or_else(|| Gradient::from(color));
@@ -193,6 +202,7 @@ impl FocusRing {
                     scale as f32,
                     alpha,
                 );
+                border.set_spin_phase(spin_phase);
             }
         } else {
             self.sizes[0] = self.full_size;
@@ -212,7 +222,13 @@ impl FocusRing {
                 scale as f32,
                 alpha,
             );
+            self.borders[0].set_spin_phase(spin_phase);
         }
+    }
+
+    /// Whether the active gradient is rotating and needs a redraw every frame.
+    pub fn is_spinning(&self) -> bool {
+        !self.config.off && self.spinning
     }
 
     pub fn render(
